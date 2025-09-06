@@ -1,0 +1,109 @@
+// Protocol Buffers version 3 syntax (simplified, no required fields)
+syntax = "proto3";
+// Package namespace for generated code
+package vdb;
+
+// Import Google's Empty message for RPCs with no return value
+import "google/protobuf/empty.proto";
+
+// Vector message represents a single vector with ID and float values
+message Vector {
+  uint64 id = 1;              // Unique identifier for the vector (64-bit unsigned)
+  repeated float values = 2;   // Array of float32 values representing vector dimensions
+}
+
+// SearchRequest contains parameters for similarity search operation
+message SearchRequest {
+  repeated Vector queries = 1;  // Array of query vectors to search for
+  int32 topk = 2;               // Number of nearest neighbors to return per query
+  int32 nprobe = 3;             // Number of inverted lists to probe (IVF parameter)
+  string index = 4;             // Name of the index to search in
+  string metric = 5;            // Distance metric: "L2", "InnerProduct", or "Cosine"
+  bool rerank_exact = 6;        // Whether to rerank results with exact distance computation
+}
+
+// Neighbor represents a single search result with ID and distance
+message Neighbor {
+  uint64 id = 1;                // Vector ID of the neighbor
+  float distance = 2;           // Distance/similarity score to query vector
+}
+
+// SearchResult contains all neighbors found for a single query
+message SearchResult {
+  repeated Neighbor neighbors = 1;  // Array of nearest neighbors, sorted by distance
+}
+
+// SearchResponse contains results for all queries in the batch
+message SearchResponse {
+  repeated SearchResult results = 1;  // Array of results, one per query vector
+}
+
+// WarmupRequest preloads specific inverted lists into GPU memory
+message WarmupRequest {
+  string index = 1;             // Name of the index to warm up
+  repeated int32 lists = 2;     // List IDs to preload into GPU cache
+}
+
+// LoadIndexRequest loads a specific index epoch into memory
+message LoadIndexRequest {
+  string index = 1;             // Name of the index to load
+  string epoch = 2;             // Epoch version identifier to load
+}
+
+// CreateIndexRequest defines parameters for creating a new index
+message CreateIndexRequest {
+  string name = 1;              // Unique name for the new index
+  int32 dimension = 2;          // Vector dimension (e.g., 128, 768)
+  string metric = 3;            // Distance metric type
+  int32 nlist = 4;              // Number of inverted lists (IVF clusters)
+  int32 m = 5;                  // Number of subquantizers for PQ (0 = no PQ)
+  int32 nbits = 6;              // Bits per subquantizer (typically 8)
+}
+
+// BuildEpochRequest triggers building a new index epoch from source data
+message BuildEpochRequest {
+  string index = 1;             // Name of the index to build
+  string source_path = 2;       // Path to source vectors (Parquet/Arrow format)
+}
+
+// ActivateEpochRequest switches the active epoch for an index
+message ActivateEpochRequest {
+  string index = 1;             // Name of the index
+  string epoch = 2;             // Epoch ID to activate
+}
+
+// StatsRequest queries statistics for a specific index
+message StatsRequest {
+  string index = 1;             // Name of the index to get stats for
+}
+
+// StatsResponse contains index statistics and resource usage
+message StatsResponse {
+  uint64 total_vectors = 1;    // Total number of vectors in the index
+  uint64 indexed_vectors = 2;   // Number of vectors actually indexed
+  string current_epoch = 3;     // Currently active epoch ID
+  float gpu_memory_used = 4;    // GPU memory usage in GB
+  float nvme_usage = 5;         // NVMe storage usage in GB
+}
+
+// QueryService handles search operations and index management
+service QueryService {
+  // Search performs similarity search on indexed vectors
+  rpc Search(SearchRequest) returns (SearchResponse);
+  // Warmup preloads inverted lists into GPU cache for faster access
+  rpc Warmup(WarmupRequest) returns (google.protobuf.Empty);
+  // LoadIndex loads a specific index epoch into memory
+  rpc LoadIndex(LoadIndexRequest) returns (google.protobuf.Empty);
+}
+
+// AdminService handles index creation and maintenance operations
+service AdminService {
+  // CreateIndex creates a new empty index with specified parameters
+  rpc CreateIndex(CreateIndexRequest) returns (google.protobuf.Empty);
+  // BuildEpoch builds a new index epoch from source data
+  rpc BuildEpoch(BuildEpochRequest) returns (google.protobuf.Empty);
+  // ActivateEpoch switches the active epoch for serving queries
+  rpc ActivateEpoch(ActivateEpochRequest) returns (google.protobuf.Empty);
+  // GetStats returns current statistics and resource usage
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+}

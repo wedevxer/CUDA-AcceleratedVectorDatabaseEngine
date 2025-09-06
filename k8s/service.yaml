@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vdb-server
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+  annotations:
+    service.beta.kubernetes.io/gcp-load-balancer-type: "Internal"
+spec:
+  type: LoadBalancer
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vdb-server-headless
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: grpc
+    port: 50051
+    targetPort: 50051
+    protocol: TCP
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server

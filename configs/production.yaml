@@ -1,0 +1,91 @@
+# Production configuration for CUDA Vector Database
+server:
+  # gRPC server settings
+  address: "0.0.0.0:50051"
+  max_batch_size: 64
+  coalesce_window_ms: 2
+  max_concurrent_searches: 32
+  
+  # GPU settings
+  gpu_memory_limit_gb: 8
+  enable_multi_gpu: true
+  
+  # Storage settings  
+  data_path: "/data/vdb"
+  epochs_path: "/data/epochs"
+  indices_path: "/data/indices"
+  
+  # Performance tuning
+  thread_pools:
+    search_workers: 8
+    admin_workers: 4
+    io_workers: 4
+  
+  # Circuit breaker settings
+  circuit_breaker:
+    error_threshold: 0.5
+    timeout_ms: 30000
+    recovery_timeout_ms: 60000
+  
+  # Rate limiting
+  rate_limit:
+    requests_per_second: 10000
+    burst_size: 200
+
+# Monitoring and observability
+monitoring:
+  # Prometheus metrics
+  metrics_port: 8080
+  metrics_path: "/metrics"
+  
+  # Health checks
+  health_check_interval_ms: 5000
+  
+  # Logging
+  log_level: "INFO"
+  log_format: "json"
+  log_file: "/var/log/vdb/server.log"
+  
+  # Tracing (optional)
+  enable_tracing: false
+  jaeger_endpoint: ""
+
+# CUDA settings
+cuda:
+  # Memory management
+  device_memory_pool_size_gb: 4
+  pinned_memory_pool_size_gb: 1
+  
+  # Stream settings
+  num_streams: 8
+  stream_priorities: true
+  
+  # Error handling
+  strict_error_checking: true
+  memory_validation: true
+
+# Index settings
+indexes:
+  # Default IVF parameters
+  default_nlist: 256
+  default_nprobe: 32
+  default_metric: "L2"
+  
+  # Cache settings
+  list_cache_size_gb: 2
+  prefetch_ratio: 0.3
+  
+  # Compaction settings
+  auto_compact: true
+  compact_threshold: 0.7
+
+# Security (optional)
+security:
+  enable_tls: false
+  cert_file: ""
+  key_file: ""
+  ca_file: ""
+  
+  # Authentication (placeholder)
+  enable_auth: false
+  auth_provider: ""

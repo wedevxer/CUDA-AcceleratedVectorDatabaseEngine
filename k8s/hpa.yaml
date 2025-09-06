@@ -1,0 +1,56 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vdb-server-hpa
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: autoscaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vdb-server
+  
+  minReplicas: 2
+  maxReplicas: 10
+  
+  metrics:
+  # CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metrics (requires metrics server)
+  - type: Pods
+    pods:
+      metric:
+        name: vdb_queries_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"  # Scale when QPS > 100 per pod
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 minutes
+      policies:
+      - type: Percent
+        value: 10  # Scale down max 10% at a time
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60   # 1 minute
+      policies:
+      - type: Percent
+        value: 50  # Scale up max 50% at a time
+        periodSeconds: 30

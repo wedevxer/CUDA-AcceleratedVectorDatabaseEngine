@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vdb-data-pvc
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Ti  # 1TB for vector storage
+  storageClassName: ssd-retain  # Use GCP SSD storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vdb-logs-pvc
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: logs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi  # 100GB for logs
+  storageClassName: ssd-retain

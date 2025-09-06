@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vdb-server
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+    app.kubernetes.io/version: "v1.0.0"
+spec:
+  replicas: 2  # Start with 2 replicas for HA
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cuda-vector-db
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cuda-vector-db
+        app.kubernetes.io/component: server
+        app.kubernetes.io/version: "v1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Use node selector for GPU nodes
+      nodeSelector:
+        accelerator: nvidia-tesla-v100  # Adjust based on your GCP GPU type
+      
+      # Tolerate GPU node taints
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      
+      serviceAccountName: vdb-server
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      
+      # Init container to ensure data directories exist
+      initContainers:
+      - name: init-data-dirs
+        image: busybox:1.35
+        command: ['sh', '-c']
+        args:
+        - |
+          mkdir -p /data/vdb/epochs /data/vdb/indices /var/log/vdb
+          chown -R 1000:1000 /data/vdb /var/log/vdb
+        volumeMounts:
+        - name: vdb-data
+          mountPath: /data/vdb
+        - name: vdb-logs
+          mountPath: /var/log/vdb
+        securityContext:
+          runAsUser: 0  # Init container needs root to create directories
+      
+      containers:
+      - name: vdb-server
+        image: gcr.io/YOUR_PROJECT_ID/cuda-vector-db:latest  # Replace with your GCR image
+        imagePullPolicy: Always
+        
+        # Resource requirements
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "4"
+            nvidia.com/gpu: 1
+          limits:
+            memory: "16Gi"
+            cpu: "8"
+            nvidia.com/gpu: 1
+        
+        # Command and arguments
+        command: ["/opt/vdb/bin/vdb_server"]
+        args:
+        - "--address=0.0.0.0:50051"
+        - "--data-path=/data/vdb"
+        - "--gpu-memory=6"  # Leave 2GB for system
+        - "--batch-size=64"
+        - "--coalesce-window=2"
+        
+        # Environment variables
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "compute,utility"
+        - name: VDB_CONFIG_PATH
+          value: "/etc/vdb/production.yaml"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        
+        # Ports
+        ports:
+        - name: grpc
+          containerPort: 50051
+          protocol: TCP
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        
+        # Health checks
+        livenessProbe:
+          exec:
+            command: ["/opt/vdb/bin/healthcheck.sh"]
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          exec:
+            command: ["/opt/vdb/bin/healthcheck.sh"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Volume mounts
+        volumeMounts:
+        - name: vdb-config
+          mountPath: /etc/vdb
+          readOnly: true
+        - name: vdb-data
+          mountPath: /data/vdb
+        - name: vdb-logs
+          mountPath: /var/log/vdb
+        
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # Need write access for temp files
+          capabilities:
+            drop:
+            - ALL
+      
+      # Volumes
+      volumes:
+      - name: vdb-config
+        configMap:
+          name: vdb-config
+      - name: vdb-data
+        persistentVolumeClaim:
+          claimName: vdb-data-pvc
+      - name: vdb-logs
+        persistentVolumeClaim:
+          claimName: vdb-logs-pvc
+      
+      # DNS configuration
+      dnsPolicy: ClusterFirst
+      
+      # Restart policy
+      restartPolicy: Always
+      
+      # Termination grace period
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vdb-server
+  namespace: vdb-system
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+automountServiceAccountToken: true
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vdb-server
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+rules:
+# Allow reading nodes for GPU detection
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+# Allow reading pods for self-discovery
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+# Allow reading services for service discovery
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vdb-server
+  labels:
+    app.kubernetes.io/name: cuda-vector-db
+    app.kubernetes.io/component: server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vdb-server
+subjects:
+- kind: ServiceAccount
+  name: vdb-server
+  namespace: vdb-system

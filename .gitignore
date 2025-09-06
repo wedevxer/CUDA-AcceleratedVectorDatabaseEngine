@@ -1,0 +1,88 @@
+# Build artifacts
+build/
+*.o
+*.so
+*.a
+*.dylib
+*.exe
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vimrc.local
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Logs and temporary files
+*.log
+logs/
+temp/
+tmp/
+test_build/
+
+# Generated protobuf files (will be generated during build)
+**/*.pb.h
+**/*.pb.cc
+**/*.grpc.pb.h
+**/*.grpc.pb.cc
+
+# Test results
+test_results.xml
+*.test
+gtest_*.xml
+
+# Docker
+.dockerignore.bak
+
+# Backup files
+*.bak
+*~
+
+# Python cache (if any Python scripts)
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if any)
+node_modules/
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+
+# Profiling data
+*.prof
+gprof.out
+
+# Core dumps
+core.*
+
+# Kubernetes secrets
+k8s/*secret*.yaml
+
+# Local testing data
+test_data/
+data/
+epochs/
+indices/
